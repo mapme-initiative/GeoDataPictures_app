@@ -1,5 +1,14 @@
 {
   "dependencies": {
-    "leaflet": "^1.9.4"
+  "leaflet": "^1.9.4"
+  },
+  "devDependencies": {
+  "gh-pages": "^5.0.0"
+  },
+  "scripts": {
+  "serve": "vue-cli-service serve",
+  "build": "vue-cli-service build",
+  "deploy": "gh-pages -d dist"
   }
 }
+
