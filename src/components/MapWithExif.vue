@@ -1,7 +1,7 @@
 <template>
   <div>
     <h1>EXIF Geotagging and Map Markers</h1>
-    <input type="file" @change="handleFileInput" accept="image/*" />
+    <input type="file" @change="handleFileInput" accept="image/*" multiple />
     <div id="map" ref="map"></div>
   </div>
 </template>
@@ -24,6 +24,7 @@ export default {
   data() {
     return {
       map: null, // Leaflet map instance
+      markerCoordinates: [], // Array to store coordinates of all valid markers
     };
   },
   mounted() {
@@ -32,9 +33,6 @@ export default {
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap contributors",
     }).addTo(this.map);
-
-    // Load the example image
-    this.loadExampleImage();
   },
   methods: {
     // Convert EXIF GPS data to decimal degrees
@@ -46,90 +44,54 @@ export default {
       }
       return decimal;
     },
-    // Handle file input and extract EXIF metadata
+    // Handle file input and extract EXIF metadata for multiple images
     handleFileInput(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+      const files = Array.from(event.target.files); // Convert FileList to an array
+      if (!files.length) return;
 
-      // Create a URL for the uploaded image
-      const imageUrl = URL.createObjectURL(file);
+      const newCoordinates = []; // Temporary array to store coordinates for this batch of files
 
-      // Read EXIF data from the image
-      EXIF.getData(file, () => {
-        const exifData = EXIF.getAllTags(file);
+      files.forEach((file) => {
+        // Create a URL for the uploaded image
+        const imageUrl = URL.createObjectURL(file);
 
-        // Extract latitude and longitude
-        const latitude = exifData.GPSLatitude
-          ? this.convertToDecimalDegrees(exifData.GPSLatitude, exifData.GPSLatitudeRef)
-          : null;
-        const longitude = exifData.GPSLongitude
-          ? this.convertToDecimalDegrees(exifData.GPSLongitude, exifData.GPSLongitudeRef)
-          : null;
+        // Read EXIF data from the image
+        EXIF.getData(file, () => {
+          const exifData = EXIF.getAllTags(file);
 
-        if (latitude && longitude) {
-          // Add a marker to the map
-          L.marker([latitude, longitude])
-            .addTo(this.map)
-            .bindPopup(`
-              <div>
-                <p><strong>Latitude:</strong> ${latitude}</p>
-                <p><strong>Longitude:</strong> ${longitude}</p>
-                <img src="${imageUrl}" alt="Uploaded Image" style="width: 200px; height: auto; border-radius: 5px;" />
-              </div>
-            `)
-            .openPopup();
+          // Extract latitude and longitude
+          const latitude = exifData.GPSLatitude
+            ? this.convertToDecimalDegrees(exifData.GPSLatitude, exifData.GPSLatitudeRef)
+            : null;
+          const longitude = exifData.GPSLongitude
+            ? this.convertToDecimalDegrees(exifData.GPSLongitude, exifData.GPSLongitudeRef)
+            : null;
 
-          // Center the map on the marker
-          this.map.setView([latitude, longitude], 13);
-        } else {
-          alert("No GPS data found in the image.");
-        }
-      });
-    },
-    // Load the example image and extract its EXIF metadata
-    loadExampleImage() {
-      const exampleImageUrl = "/example.jpg"; // Path to the example image in the public folder
+          if (latitude && longitude) {
+            // Add a marker to the map
+            L.marker([latitude, longitude])
+              .addTo(this.map)
+              .bindPopup(`
+                <div>
+                  <p><strong>Latitude:</strong> ${latitude}</p>
+                  <p><strong>Longitude:</strong> ${longitude}</p>
+                  <img src="${imageUrl}" alt="Uploaded Image" style="width: 200px; height: auto; border-radius: 5px;" />
+                </div>
+              `);
 
-      // Fetch the example image as a Blob
-      fetch(exampleImageUrl)
-        .then((response) => response.blob())
-        .then((blob) => {
-          const imageUrl = URL.createObjectURL(blob); // Create a URL for the example image
+            // Add the coordinates to the temporary array
+            newCoordinates.push([latitude, longitude]);
+          } else {
+            console.warn(`No GPS data found in the image: ${file.name}`);
+          }
 
-          EXIF.getData(blob, () => {
-            const exifData = EXIF.getAllTags(blob);
-
-            // Extract latitude and longitude
-            const latitude = exifData.GPSLatitude
-              ? this.convertToDecimalDegrees(exifData.GPSLatitude, exifData.GPSLatitudeRef)
-              : null;
-            const longitude = exifData.GPSLongitude
-              ? this.convertToDecimalDegrees(exifData.GPSLongitude, exifData.GPSLongitudeRef)
-              : null;
-
-            if (latitude && longitude) {
-              // Add a marker to the map
-              L.marker([latitude, longitude])
-                .addTo(this.map)
-                .bindPopup(`
-                  <div>
-                    <p><strong>Latitude:</strong> ${latitude}</p>
-                    <p><strong>Longitude:</strong> ${longitude}</p>
-                    <img src="${imageUrl}" alt="Example Image" style="width: 200px; height: auto; border-radius: 5px;" />
-                  </div>
-                `)
-                .openPopup();
-
-              // Center the map on the marker
-              this.map.setView([latitude, longitude], 13);
-            } else {
-              console.warn("No GPS data found in the example image.");
-            }
-          });
-        })
-        .catch((error) => {
-          console.error("Error loading the example image:", error);
+          // After processing all files, adjust the map view to fit all markers
+          if (newCoordinates.length > 0) {
+            this.markerCoordinates.push(...newCoordinates); // Add new coordinates to the main array
+            this.map.fitBounds(this.markerCoordinates); // Adjust the map view to fit all markers
+          }
         });
+      });
     },
   },
 };
