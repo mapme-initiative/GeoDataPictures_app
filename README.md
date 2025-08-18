@@ -1,4 +1,4 @@
-(Open Application)[https://menkli.github.io/GeoDataPictures_develop/]
+[Open Application](https://menkli.github.io/GeoDataPictures_develop/)
 
 ## Project setup
 ```
