@@ -1,24 +1,10 @@
 [Open Application](https://menkli.github.io/GeoDataPictures_develop/)
 
-## Project setup
-```
-npm install
-```
+**Release notes**
+- Upload of multiple images possible (JPG only)  
+- Images are being geolocated and plottet on the map
 
-### Compiles and hot-reloads for development
-```
-npm run serve
-```
-
-### Compiles and minifies for production
-```
-npm run build
-```
-
-### Lints and fixes files
-```
-npm run lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+**To do**  
+- Upload possibilities for images in HEIC format
+- Image resizing  
+- Export map as HTML including images  
