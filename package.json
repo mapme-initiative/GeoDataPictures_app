@@ -9,10 +9,13 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@vue-leaflet/vue-leaflet": "^0.10.1",
     "core-js": "^3.8.3",
     "exif-js": "^2.3.0",
+    "exifreader": "^4.31.1",
+    "leaflet": "^1.9.4",
     "vue": "^3.2.13",
-    "leaflet": "^1.9.4"
+    "vue-leaflet": "^0.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",
@@ -23,7 +26,6 @@
     "eslint": "^7.32.0",
     "eslint-plugin-vue": "^8.0.3",
     "gh-pages": "^6.3.0"
-    
   },
   "eslintConfig": {
     "root": true,
