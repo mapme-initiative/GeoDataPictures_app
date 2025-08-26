@@ -66,18 +66,38 @@ export default {
 
           // Parse EXIF data using ExifReader
           const tags = ExifReader.load(arrayBuffer);
+          console.log(`EXIF data for ${file.name}:`, tags);
 
-          // Extract GPS data directly in decimal format
+                // Extract GPS data
           const latitude = tags.GPSLatitude?.description;
+          const latitudeRef = tags.GPSLatitudeRef?.description; // 'N' or 'S'
           const longitude = tags.GPSLongitude?.description;
+          const longitudeRef = tags.GPSLongitudeRef?.description; // 'E' or 'W'
+          
+          console.log("Raw Latitude:", latitude);
+          console.log("Latitude Reference:", latitudeRef);
+          console.log("Raw Longitude:", longitude);
+          console.log("Longitude Reference:", longitudeRef);
+                // Interpret latitude and longitude based on their references
+          const interpretedLatitude =
+            latitude && latitudeRef
+              ? (latitudeRef === "South latitude" ? -1 : 1) * latitude
+              : null;
+          const interpretedLongitude =
+            longitude && longitudeRef
+              ? (longitudeRef === "West longitude" ? -1 : 1) * longitude
+              : null;
 
-          if (latitude && longitude) {
+          console.log("Interpreted Latitude:", interpretedLatitude);
+          console.log("Interpreted Longitude:", interpretedLongitude);
+
+          if (interpretedLatitude !== null && interpretedLongitude !== null) {
             // Create a URL for the uploaded image
             const imageUrl = URL.createObjectURL(file);
 
             // Add the marker data to the array
             newMarkers.push({
-              position: [latitude, longitude],
+              position: [interpretedLatitude, interpretedLongitude],
               imageUrl,
             });
           } else {
