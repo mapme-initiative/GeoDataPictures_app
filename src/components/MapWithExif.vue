@@ -1,31 +1,16 @@
 <template>
   <div>
     <h1>EXIF Geotagging and Map Markers</h1>
-    <input type="file" @change="handleFileInput" accept="image/*" multiple />
-    <l-map
-      style="height: 90vh; width: 100%;"
-      :zoom="zoom"
-      :center="center"
-      @ready="onMapReady"
-    >
-      <l-tile-layer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="© OpenStreetMap contributors"
-      />
-      <l-marker
-        v-for="(marker, index) in markers"
-        :key="index"
-        :lat-lng="marker.position"
-      >
+    <input type="file" @change="handleFileInput" accept="image/*,image/heic,image/heif" multiple />
+    <l-map style="height: 90vh; width: 100%;" :zoom="zoom" :center="center" @ready="onMapReady">
+      <l-tile-layer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution="© OpenStreetMap contributors" />
+      <l-marker v-for="(marker, index) in markers" :key="index" :lat-lng="marker.position">
         <l-popup>
           <div>
             <p><strong>Latitude:</strong> {{ marker.position[0] }}</p>
             <p><strong>Longitude:</strong> {{ marker.position[1] }}</p>
-            <img
-              :src="marker.imageUrl"
-              alt="Uploaded Image"
-              style="width: 200px; height: auto; border-radius: 5px;"
-            />
+            <img :src="marker.imageUrl" alt="Uploaded Image" style="width: 200px; height: auto; border-radius: 5px;" />
           </div>
         </l-popup>
       </l-marker>
@@ -36,6 +21,8 @@
 <script>
 import { LMap, LTileLayer, LMarker, LPopup } from "@vue-leaflet/vue-leaflet";
 import ExifReader from "exifreader";
+import heic2any from "heic2any";
+import piexif from "piexifjs";
 
 export default {
   name: "MapWithExif",
@@ -59,61 +46,134 @@ export default {
 
       const newMarkers = []; // Temporary array to store new markers
 
-      for (const file of files) {
-        try {
-          // Read the file as an ArrayBuffer
-          const arrayBuffer = await file.arrayBuffer();
+      // Process each file and wait for all asynchronous operations to complete
+      await Promise.all(
+        files.map(async (file) => {
+          try {
+            console.log(`Processing file: ${file.name}`);
+            const fileExtension = file.name.split('.').pop().toLowerCase();
 
-          // Parse EXIF data using ExifReader
-          const tags = ExifReader.load(arrayBuffer);
-          console.log(`EXIF data for ${file.name}:`, tags);
+            let processedFile = file;
 
-                // Extract GPS data
-          const latitude = tags.GPSLatitude?.description;
-          const latitudeRef = tags.GPSLatitudeRef?.description; // 'N' or 'S'
-          const longitude = tags.GPSLongitude?.description;
-          const longitudeRef = tags.GPSLongitudeRef?.description; // 'E' or 'W'
-          
-          console.log("Raw Latitude:", latitude);
-          console.log("Latitude Reference:", latitudeRef);
-          console.log("Raw Longitude:", longitude);
-          console.log("Longitude Reference:", longitudeRef);
-                // Interpret latitude and longitude based on their references
-          const interpretedLatitude =
-            latitude && latitudeRef
-              ? (latitudeRef === "South latitude" ? -1 : 1) * latitude
-              : null;
-          const interpretedLongitude =
-            longitude && longitudeRef
-              ? (longitudeRef === "West longitude" ? -1 : 1) * longitude
-              : null;
+            // Check if the file is HEIC/HEIF
+            if (fileExtension === "heic" || fileExtension === "heif") {
+              console.log(`File identified as HEIC/HEIF: ${file.name}`);
 
-          console.log("Interpreted Latitude:", interpretedLatitude);
-          console.log("Interpreted Longitude:", interpretedLongitude);
+              // Step 1: Extract metadata from the original file
+              const originalArrayBuffer = await file.arrayBuffer();
+              const originalTags = ExifReader.load(originalArrayBuffer);
+              console.log(`Original Metadata for ${file.name}:`, originalTags);
 
-          if (interpretedLatitude !== null && interpretedLongitude !== null) {
-            // Create a URL for the uploaded image
-            const imageUrl = URL.createObjectURL(file);
+              // Step 2: Convert HEIC/HEIF to JPEG
+              const convertedBlob = await heic2any({ blob: file, toType: "image/jpeg" });
+              processedFile = new File([convertedBlob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                type: "image/jpeg",
+              });
+              console.log(`Conversion successful: ${processedFile.name}`);
 
-            // Add the marker data to the array
-            newMarkers.push({
-              position: [interpretedLatitude, interpretedLongitude],
-              imageUrl,
-            });
-          } else {
-            console.warn(`No GPS data found in the image: ${file.name}`);
+              // Step 3: Inject metadata into the converted JPEG
+              const reader = new FileReader();
+              const metadataInjectedFile = await new Promise((resolve, reject) => {
+                reader.onload = function (event) {
+                  try {
+                    const jpegData = event.target.result; // Base64 string of the JPEG
+                    const exifBytes = piexif.dump(originalTags); // Convert original metadata to EXIF bytes
+                    const newJpeg = piexif.insert(exifBytes, jpegData); // Inject metadata into the JPEG
+
+                    // Create a Blob from the updated JPEG
+                    const updatedBlob = new Blob(
+                      [new Uint8Array(atob(newJpeg.split(",")[1]).split("").map((c) => c.charCodeAt(0)))],
+                      { type: "image/jpeg" }
+                    );
+
+                    const updatedFile = new File([updatedBlob], processedFile.name, { type: "image/jpeg" });
+                    console.log(`Metadata injected successfully into: ${updatedFile.name}`);
+                    resolve(updatedFile);
+                  } catch (error) {
+                    reject(error);
+                  }
+                };
+                reader.readAsDataURL(processedFile);
+              });
+
+              // Step 4: Extract GPS data from the original metadata
+              const latitude = originalTags.GPSLatitude?.description;
+              const latitudeRef = originalTags.GPSLatitudeRef?.description; // 'N' or 'S'
+              const longitude = originalTags.GPSLongitude?.description;
+              const longitudeRef = originalTags.GPSLongitudeRef?.description; // 'E' or 'W';
+
+              console.log("Original Raw Latitude:", latitude);
+              console.log("Original Latitude Reference:", latitudeRef);
+              console.log("Original Raw Longitude:", longitude);
+              console.log("Original Longitude Reference:", longitudeRef);
+
+              const interpretedLatitude =
+                latitude && latitudeRef
+                  ? (latitudeRef === "South latitude" ? -1 : 1) * latitude
+                  : null;
+              const interpretedLongitude =
+                longitude && longitudeRef
+                  ? (longitudeRef === "West longitude" ? -1 : 1) * longitude
+                  : null;
+
+              console.log("Interpreted Latitude:", interpretedLatitude);
+              console.log("Interpreted Longitude:", interpretedLongitude);
+
+              if (interpretedLatitude !== null && interpretedLongitude !== null) {
+                const imageUrl = URL.createObjectURL(metadataInjectedFile);
+                newMarkers.push({
+                  position: [interpretedLatitude, interpretedLongitude],
+                  imageUrl,
+                });
+                console.log(`Marker added for file: ${metadataInjectedFile.name}`);
+              } else {
+                console.warn(`No GPS data found in the original image: ${file.name}`);
+              }
+            } else {
+              console.log(`File is not HEIC/HEIF: ${file.name}`);
+              // Process non-HEIC/HEIF files as usual
+              const arrayBuffer = await file.arrayBuffer();
+              const tags = ExifReader.load(arrayBuffer);
+              console.log(`Metadata for ${file.name}:`, tags);
+
+              const latitude = tags.GPSLatitude?.description;
+              const latitudeRef = tags.GPSLatitudeRef?.description; // 'N' or 'S'
+              const longitude = tags.GPSLongitude?.description;
+              const longitudeRef = tags.GPSLongitudeRef?.description; // 'E' or 'W';
+
+              const interpretedLatitude =
+                latitude && latitudeRef
+                  ? (latitudeRef === "South latitude" ? -1 : 1) * latitude
+                  : null;
+              const interpretedLongitude =
+                longitude && longitudeRef
+                  ? (longitudeRef === "West longitude" ? -1 : 1) * longitude
+                  : null;
+
+              if (interpretedLatitude !== null && interpretedLongitude !== null) {
+                const imageUrl = URL.createObjectURL(file);
+                newMarkers.push({
+                  position: [interpretedLatitude, interpretedLongitude],
+                  imageUrl,
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`Error processing file ${file.name}:`, error);
           }
-        } catch (error) {
-          console.error(`Error reading EXIF data from file ${file.name}:`, error);
-        }
-      }
+        })
+      );
 
       // Update the markers array and adjust the map view
       if (newMarkers.length > 0) {
         this.markers.push(...newMarkers);
         this.fitToBounds();
+      } else {
+        console.warn("No valid markers to add to the map.");
       }
-    },
+    }
+
+    ,
     onMapReady(mapInstance) {
       this.map = mapInstance;
     },
