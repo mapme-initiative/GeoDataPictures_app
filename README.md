@@ -1,10 +1,10 @@
-[Open Application](https://menkli.github.io/GeoDataPictures_develop/)
+[Open Application](https://mapme-initiative.github.io/GeoDataPictures_app/)
 
 **Release notes**
-- Upload of multiple images possible (JPG only)  
+- Upload of multiple images possible 
+- Upload of multiple image formats possible (jpg/heic/heif)
 - Images are being geolocated and plottet on the map
 
 **To do**  
-- Upload possibilities for images in HEIC format
 - Image resizing  
 - Export map as HTML including images  
