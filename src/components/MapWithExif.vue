@@ -2,9 +2,14 @@
   <div>
     <h1>EXIF Geotagging and Map Markers</h1>
     <input type="file" @change="handleFileInput" accept="image/*,image/heic,image/heif" multiple />
-    <l-map style="height: 90vh; width: 100%;" :zoom="zoom" :center="center" @ready="onMapReady">
+    <l-map style="height: 80vh; width: 100%;" :zoom="zoom" :center="center" @ready="onMapReady">
       <l-tile-layer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution="© OpenStreetMap contributors" />
+      <l-tile-layer
+        v-if="currentBasemap === 'esri'"
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+        attribution="Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+      />
       <l-marker v-for="(marker, index) in markers" :key="index" :lat-lng="marker.position">
         <l-popup>
           <div>
@@ -15,6 +20,12 @@
         </l-popup>
       </l-marker>
     </l-map>
+
+    <!-- Basemap Switcher -->
+    <div style="margin-top: 10px;">
+      <button @click="switchBasemap('osm')">OpenStreetMap</button>
+      <button @click="switchBasemap('esri')">Esri World Imagery</button>
+    </div>
   </div>
 </template>
 
@@ -37,6 +48,7 @@ export default {
       center: [0, 0], // Default map center
       zoom: 2, // Default zoom level
       markers: [], // Array to store marker data
+      currentBasemap: "osm", // Default basemap (OpenStreetMap)
     };
   },
   methods: {
@@ -171,9 +183,10 @@ export default {
       } else {
         console.warn("No valid markers to add to the map.");
       }
-    }
-
-    ,
+    },
+    switchBasemap(basemap) {
+      this.currentBasemap = basemap;
+    },
     onMapReady(mapInstance) {
       this.map = mapInstance;
     },
