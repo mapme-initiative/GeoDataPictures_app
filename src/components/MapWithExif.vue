@@ -238,45 +238,64 @@ export default {
 
       const htmlContent = `
       <!DOCTYPE html>
-      <html>
-      <head>
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <scr` + `ipt src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></scr` + `ipt> 
-      </head>
-      <body>
-        <div id="map" style="height: 100vh;"></div>
-        <scr` + `ipt>
-          const mapData = ${JSON.stringify(mapData)};
-          const map = L.map('map').setView(mapData.center, mapData.zoom);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-          mapData.markers.forEach(marker => {
-            const m = L.marker(marker.position).addTo(map);
-            m.bindPopup(\`
-          <div style="text-align: center;">
-            <!-- Image -->
-            <img 
-              src="\${marker.photo}" 
-              alt="Uploaded Image" 
-              style="width: 300px; height: auto; border-radius: 5px; margin-bottom: 10px;" 
-            />
-            <!-- Location -->
-            <p style="font-size: 12px; margin: 0; color: gray;">
-              Location: \${marker.position[0]}, \${marker.position[1]}
-            </p>
-            <!-- Date/Time -->
-            <p style="font-size: 12px; margin: 0; color: gray;">
-              Taken: \${marker.datetime || 'Unknown'}
-            </p>
-            <!-- Filename -->
-            <p style="font-size: 12px; margin: 0; color: gray;">
-              File: \${marker.filename || 'Unknown'}
-            </p>
-          </div>
-        \`);
-      });
-    </scr` + `ipt>
-  </body>
-  </html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <scr` + `ipt src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></scr` + `ipt>
+</head>
+<body>
+  <div id="map" style="height: 100vh;"></div>
+  <scr` + `ipt>
+    const mapData = ${JSON.stringify(mapData)};
+
+    // Initialize the map
+    const map = L.map('map').setView(mapData.center, mapData.zoom);
+
+    // Define basemaps
+    const basemaps = {
+      "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: "© OpenStreetMap contributors"
+      }),
+      "Esri World Imagery": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: "Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+      })
+    };
+
+    // Add the default basemap (OpenStreetMap)
+    basemaps["OpenStreetMap"].addTo(map);
+
+    // Add markers
+    mapData.markers.forEach(marker => {
+      const m = L.marker(marker.position).addTo(map);
+      m.bindPopup(\`
+        <div style="text-align: center;">
+          <!-- Image -->
+          <img 
+            src="\${marker.photo}" 
+            alt="Uploaded Image" 
+            style="width: 300px; height: auto; border-radius: 5px; margin-bottom: 10px;" 
+          />
+          <!-- Location -->
+          <p style="font-size: 12px; margin: 0; color: gray;">
+            Location: \${marker.position[0]}, \${marker.position[1]}
+          </p>
+          <!-- Date/Time -->
+          <p style="font-size: 12px; margin: 0; color: gray;">
+            Taken: \${marker.datetime || 'Unknown'}
+          </p>
+          <!-- Filename -->
+          <p style="font-size: 12px; margin: 0; color: gray;">
+            File: \${marker.filename || 'Unknown'}
+          </p>
+        </div>
+      \`);
+    });
+
+    // Add a layer control to switch basemaps
+    L.control.layers(basemaps).addTo(map);
+  </scr` + `ipt>
+</body>
+</html>
   `;
 
       const blob = new Blob([htmlContent], { type: "text/html" });
