@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>EXIF Geotagging and Map Markers</h1>
+    <h1>GeoDataPictures</h1>
     <input type="file" @change="handleFileInput" accept="image/*,image/heic,image/heif" multiple />
     <l-map style="height: 80vh; width: 100%;" :zoom="zoom" :center="center" @ready="onMapReady">
       <l-tile-layer
@@ -12,15 +12,31 @@
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
         attribution="Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
       />
-      <l-marker v-for="(marker, index) in markers" :key="index" :lat-lng="marker.position">
-        <l-popup>
-          <div>
-            <p><strong>Latitude:</strong> {{ marker.position[0] }}</p>
-            <p><strong>Longitude:</strong> {{ marker.position[1] }}</p>
-            <img :src="marker.imageUrl" alt="Uploaded Image" style="width: 200px; height: auto; border-radius: 5px;" />
-          </div>
-        </l-popup>
-      </l-marker>
+<l-marker v-for="(marker, index) in markers" :key="index" :lat-lng="marker.position">
+  <l-popup>
+    <div style="text-align: center;">
+      <!-- Image -->
+      <img 
+        :src="marker.imageUrl" 
+        alt="Uploaded Image" 
+        style="width: 300px; height: auto; border-radius: 5px; margin-bottom: 10px;" 
+      />
+      <!-- Location -->
+      <p style="font-size: 12px; margin: 0; color: gray;">
+        Location: {{ marker.position[0] }}, {{ marker.position[1] }}
+      </p>
+      <!-- Date/Time -->
+      <p style="font-size: 12px; margin: 0; color: gray;">
+        Taken: {{ marker.datetime }}
+      </p>
+      <!-- Filename -->
+      <p style="font-size: 12px; margin: 0; color: gray;">
+        File: {{ marker.filename }}
+      </p>
+    </div>
+  </l-popup>
+</l-marker>
+
     </l-map>
 
     <!-- Basemap Switcher -->
@@ -120,6 +136,8 @@ export default {
           const latitudeRef = originalTags.GPSLatitudeRef?.description; // 'N' or 'S'
           const longitude = originalTags.GPSLongitude?.description;
           const longitudeRef = originalTags.GPSLongitudeRef?.description; // 'E' or 'W';
+          const datetime = originalTags.DateTime?.description;
+          const filename = file.name
 
           console.log("Original Raw Latitude:", latitude);
           console.log("Original Latitude Reference:", latitudeRef);
@@ -142,6 +160,8 @@ export default {
             const imageUrl = URL.createObjectURL(metadataInjectedFile);
             newMarkers.push({
               position: [interpretedLatitude, interpretedLongitude],
+              datetime: datetime,
+              filename: filename,
               imageUrl,
               file: processedFile,
             });
@@ -160,6 +180,8 @@ export default {
           const latitudeRef = tags.GPSLatitudeRef?.description; // 'N' or 'S'
           const longitude = tags.GPSLongitude?.description;
           const longitudeRef = tags.GPSLongitudeRef?.description; // 'E' or 'W';
+          const datetime = tags.DateTime?.description;
+          const filename = file.name;
 
           const interpretedLatitude =
             latitude && latitudeRef
@@ -174,6 +196,8 @@ export default {
             const imageUrl = URL.createObjectURL(file);
             newMarkers.push({
               position: [interpretedLatitude, interpretedLongitude],
+              datetime: datetime,
+              filename: filename,
               imageUrl,
               file: processedFile,              
             });
